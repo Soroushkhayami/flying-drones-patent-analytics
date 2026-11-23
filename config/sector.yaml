@@ -3,11 +3,14 @@
 version: v2
 
 env: PROD                 # TEST while developing, PROD for the final numbers: all steps must use the same
+patstat_edition: null     # record the edition reported by TIP when available
 
 sector:
   name: Flying drones
 
 years:
+  query_min: 2000         # application filing years used for candidate retrieval
+  query_max: 2024
   min: 2000               # first priority year (literature evidence: PR #3, literature_start_year_keywords)
   max: 2025               # last year available in the PATSTAT edition
   truncated: 3            # last years incomplete (18-month publication lag): shaded, excluded from growth
@@ -17,6 +20,5 @@ years:
 counting:
   ipr_type: PI            # patents of invention only (no utility models), as in the extraction
 
-paths:                    # data files on TIP (not committed: bulk PATSTAT extracts stay out of the repo)
-  df_selected: /home/jovyan/progetto/df_selected.parquet   # output of Step0/1-DataPreparation
-  extract_dir: /home/jovyan/progetto/extract               # output of the extraction, one folder per env
+paths:
+  run_root: outputs/runs  # relative to this checkout, or an absolute bulk-data directory on TIP

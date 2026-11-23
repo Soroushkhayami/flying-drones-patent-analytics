@@ -1,3 +1,40 @@
+# Flying Drones Patent Analytics
+
+## Run the Step 0 → Step 1 baseline
+
+Use Python 3.11 or later and an EPO TIP notebook kernel with PATSTAT access for retrieval, extraction, and Step 1. The scoring notebook uses Colab and the patent SBERT model. Use the repository's Python requirements in the relevant runtime. The applicant notebook also imports Cleanco. Fresh LLM classifications require the course-authorized API credential. Cached calibration and the saved blind-label comparison can use existing labels.
+
+1. In `config/sector.yaml`, select `TEST` or `PROD`, set `patstat_edition` if TIP identifies it, and select a persistent `paths.run_root` with space for the extracts. The default is the ignored `outputs/runs` directory in the checkout. The configuration keeps the original application query window (2000–2024) distinct from the family/analysis window (2000–2025). The committed default is **PROD**. Set **TEST** for a development extraction.
+2. Set one explicit run ID for every TIP kernel participating in the run. For example, execute `%env PATENT_RUN_ID=baseline-001` in each kernel, or export the variable before launching Jupyter. Start notebooks from their checkout. Keep the same checkout, YAML contents, and run ID when restarting a stage. Different inputs, settings, or revised outputs belong to a fresh run ID.
+3. **Query diagnostics, optional.** `Step0/1a-QueryDiagnostics.ipynb` documents how the team selected terms and codes. Its diagnostic groups and cached labels support calibration. The production search uses the explicit final lists in `1b`.
+4. **TIP → Colab.** Run `Step0/1b-DataPreparation.ipynb` through section 2.1. This publishes `preparation/df_sbert_input.parquet` and its adjacent `.receipt.json` in the run directory. Transfer this pair to the approved scoring runtime. Run `Step0/1c-SbertScoring_Colab.ipynb`. Place the returned `df_sbert_scored.parquet` **and** `df_sbert_scored.parquet.handoff.json` in that same run's `colab_return/` directory on TIP.
+5. **TIP selection.** Continue `1b` from section 2.2. After a kernel restart, run its imports and settings first. The import checks the run, model/description, file digests, and original application rows. The notebook publishes the scored and selected application files and the immutable selection `manifest.json`.
+6. **PROD validation.** Run `Step0/2c-ProdValidation.ipynb` on the same PROD run. It uses `2-DataValidation.ipynb`, samples kept/rejected families and stores any pending human reviews in the run's `validation/` directory. Fill the hand labels there, re-run the evaluation, then publish the v2 summary. The optional historical blind-label study in `2b-LLMHandCheck.ipynb` belongs to TEST. Selection and validation are separate stages.
+7. **Family expansion and extraction.** Run `Step0/3-DataExtractionAndCleaning.ipynb`. It verifies the selection release, expands DOCDB families, applies the existing year and PI rules, then publishes `extract/*.parquet`. The family year and summary fields are still computed before PI-member exclusion.
+8. **Downstream branches.** `Step0/3b-NameHarmonization.ipynb` uses the run's extracted persons and families to publish `harmonization/*.csv`. Use a separate working copy of the alias-review template for human decisions. Independently, `Step1/1-GeneralDescription.ipynb` reads four verified extract tables and live TIP benchmarks/WIPO fields, then publishes twelve CSVs under `step1/`. Step 1 does not require the applicant harmonization notebook.
+
+### Identify and verify a run
+
+Files live under `<run_root>/<TEST|PROD>/<PATENT_RUN_ID>/`. `run.json` records the configuration snapshot. After selection, `manifest.json` identifies the cohort, model, full method settings, file digests and counts. Each published artifact has an adjacent SHA-256 receipt with its dependencies. Identical publications can be reused. An altered file, changed configuration, foreign receipt, or conflicting publication fails verification. Missing edition or Git metadata is recorded as unknown. The storage volume used by TIP must support Linux file locking and same-filesystem hard links.
+
+To check the complete selection lineage from the checkout root with the run ID set:
+
+```python
+from pathlib import Path
+import json
+from run_baseline import Run
+
+run = Run.open(Path.cwd())
+release = json.loads(run.verify("manifest.json").read_text())
+print(run.env, run.run_id, release["selected_rows"], release["selected_families"])
+```
+
+Use `python -m unittest discover -s tests -v` for the local baseline checks. They use temporary run directories. A fresh TIP run is required to establish new scientific results. Embedded notebook outputs and files already tracked in `Step0/validation/` document earlier runs; copying a legacy Parquet into a new run does not give it provenance. Keep patent extracts and full-text working reviews in approved storage.
+
+## Historical TEST workflow
+
+The following notes describe the earlier TEST prototype in `Step0/startingDraft.ipynb`. Its search and completion notes predate the baseline above.
+
 **PWStep0 — Patent Dataset Construction for the Flying Drones Sector**
 
 The notebook builds a patent dataset for the flying drones sector using PATSTAT through the EPO Technology Intelligence Platform (TIP). Development currently uses the **TEST environment**, so the focus is on implementing and checking the procedure rather than reporting sector statistics.
